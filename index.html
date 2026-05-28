@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradient Descent — Catatan Belajar AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8e8f0;
+    --muted: #7a7a8c;
+    --blue: #4f9cf9;
+    --blue-dim: rgba(79,156,249,0.12);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --green: #3ecf8e;
+    --green-dim: rgba(62,207,142,0.1);
+    --red: #f46b5d;
+    --red-dim: rgba(244,107,93,0.1);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.1);
+    --teal: #2dd4bf;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,156,249,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,156,249,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    margin-bottom: 3rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 2rem;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+
+  .pill.blue { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+
+  h1 span { color: var(--blue); }
+
+  .header-desc {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 520px;
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+    padding: 6px;
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+
+  .nav-tab {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all .2s;
+    font-family: var(--sans);
+  }
+
+  .nav-tab:hover { color: var(--text); background: var(--surface2); }
+  .nav-tab.active { background: var(--blue); color: #fff; }
+
+  /* SECTION */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  /* STEP NAVIGATOR */
+  .step-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .step-tab {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .2s;
+    font-family: var(--mono);
+  }
+
+  .step-tab:hover { border-color: var(--blue); color: var(--blue); }
+  .step-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .step-tab.done { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .step-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-title-text {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .step-desc {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.75;
+    margin-bottom: 1rem;
+  }
+
+  /* CODE BLOCK */
+  .code {
+    background: #0a0a0c;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: #c9c9d8;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+  }
+
+  .code .hl { color: var(--amber); }
+  .code .hl-blue { color: var(--blue); }
+  .code .hl-green { color: var(--green); }
+  .code .hl-red { color: var(--red); }
+  .code .hl-purple { color: var(--purple); }
+  .code .comment { color: #4a4a5a; }
+
+  /* FEATURE GRID */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  .feature-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .feature-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--blue);
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .feature-val { color: var(--text); font-weight: 500; }
+  .feature-sub { color: var(--muted); font-size: 12px; }
+
+  /* NAV BUTTONS */
+  .nav-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 1.25rem;
+  }
+
+  .btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: var(--sans);
+  }
+
+  .btn:hover { border-color: var(--blue); color: var(--blue); }
+  .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn-primary:hover { background: #3a8ef0; border-color: #3a8ef0; color: #fff; }
+
+  /* CHECK LIST */
+  .check-list { display: flex; flex-direction: column; gap: 8px; }
+  .check-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .check-icon { color: var(--green); flex-shrink: 0; margin-top: 3px; font-size: 15px; }
+  .warn-icon { color: var(--amber); flex-shrink: 0; margin-top: 3px; font-size: 15px; }
+  .check-item strong { color: var(--text); }
+
+  /* PROBLEM CARDS */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  .problem-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .problem-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--red);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .problem-desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+
+  .solution {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 500;
+    display: flex;
+    gap: 5px;
+    align-items: flex-start;
+  }
+
+  /* ANALOGY */
+  .analogy {
+    background: var(--blue-dim);
+    border: 1px solid rgba(79,156,249,0.2);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .analogy-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--blue);
+    margin-bottom: 8px;
+  }
+
+  .analogy p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+  .analogy strong { color: var(--text); }
+
+  /* FLOWCHART */
+  .flowchart {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 1rem 0;
+  }
+
+  .flow-node {
+    width: 100%;
+    max-width: 360px;
+    border-radius: 12px;
+    padding: 12px 20px;
+    text-align: center;
+    position: relative;
+  }
+
+  .flow-node .fn-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .flow-node .fn-formula {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .flow-node.gray { background: var(--surface2); border: 1px solid var(--border2); }
+  .flow-node.gray .fn-label { color: var(--muted); }
+  .flow-node.gray .fn-formula { color: var(--text); }
+
+  .flow-node.blue { background: var(--blue-dim); border: 1px solid rgba(79,156,249,0.3); }
+  .flow-node.blue .fn-label { color: var(--blue); }
+  .flow-node.blue .fn-formula { color: var(--blue); }
+
+  .flow-node.amber { background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.3); }
+  .flow-node.amber .fn-label { color: var(--amber); }
+  .flow-node.amber .fn-formula { color: var(--amber); }
+
+  .flow-node.green { background: var(--green-dim); border: 1px solid rgba(62,207,142,0.3); }
+  .flow-node.green .fn-label { color: var(--green); }
+  .flow-node.green .fn-formula { color: var(--green); }
+
+  .flow-node.purple { background: var(--purple-dim); border: 1px solid rgba(167,139,250,0.3); }
+  .flow-node.purple .fn-label { color: var(--purple); }
+  .flow-node.purple .fn-formula { color: var(--purple); }
+
+  .flow-arrow {
+    font-size: 20px;
+    color: var(--border2);
+    line-height: 1;
+    padding: 4px 0;
+  }
+
+  .flow-diamond {
+    width: 100%;
+    max-width: 260px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+    position: relative;
+  }
+
+  .loop-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-top: 6px;
+  }
+
+  /* MULTI INPUT VIZ */
+  .input-viz {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 1rem 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .input-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    text-align: center;
+    min-width: 80px;
+  }
+
+  .input-box .xn { font-family: var(--mono); color: var(--blue); font-size: 11px; }
+  .input-box .xv { color: var(--text); font-weight: 500; font-size: 13px; }
+
+  .viz-arrow { font-size: 22px; color: var(--muted); }
+
+  .weight-row-viz {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .weight-box {
+    background: rgba(79,156,249,0.1);
+    border: 1px solid rgba(79,156,249,0.2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--blue);
+  }
+
+  .result-viz {
+    background: var(--green-dim);
+    border: 1px solid rgba(62,207,142,0.3);
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  /* KESIMPULAN TAGS */
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 1rem; }
+  .tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 2.5rem;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--teal));
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+
+  /* FOOTER */
+  footer {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  footer span { color: var(--blue); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  @media (max-width: 540px) {
+    .container { padding: 2rem 1rem 4rem; }
+    h1 { font-size: 1.6rem; }
+    .nav-tab { padding: 7px 12px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-top">
+      <span class="pill blue">Deep Learning</span>
+      <span class="pill">Catatan Belajar AI</span>
+    </div>
+    <h1>Gradient<br><span>Descent</span></h1>
+    <p class="header-desc">Konsep, alur, rumus, dan masalah umum — lengkap dengan visualisasi step by step untuk pemula hingga praktisi.</p>
+  </header>
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('konsep')">Konsep</button>
+    <button class="nav-tab" onclick="showSection('alur')">Alur Step-by-Step</button>
+    <button class="nav-tab" onclick="showSection('flowchart')">Flowchart</button>
+    <button class="nav-tab" onclick="showSection('multi')">Input Banyak Fitur</button>
+    <button class="nav-tab" onclick="showSection('masalah')">Masalah Umum</button>
+    <button class="nav-tab" onclick="showSection('activation')">Activation Function</button>
+    <button class="nav-tab" onclick="showSection('analogi')">🎯 Analogi</button>
+    <button class="nav-tab" onclick="showSection('backprop')">Backpropagation</button>
+    <button class="nav-tab" onclick="showSection('kesimpulan')">Kesimpulan</button>
+  </div>
+
+  <!-- ======================== KONSEP ======================== -->
+  <div id="sec-konsep" class="section active">
+    <div class="analogy">
+      <div class="analogy-title">⛰ Analogi Pegunungan</div>
+      <p>Bayangkan kamu berdiri di <strong>pegunungan gelap</strong> dan ingin turun ke lembah.
+      <strong>Posisi kamu</strong> = nilai weight &nbsp;|&nbsp; <strong>Ketinggian</strong> = nilai Loss &nbsp;|&nbsp;
+      <strong>Langkah kaki</strong> = learning rate (α). Gradient descent = cara meraba arah paling menurun di setiap langkah.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Perbedaan penting</div>
+      <div class="check-list">
+        <div class="check-item"><span class="check-icon">✓</span><span><strong>Gradient Descent</strong> = konsep/metode cara update weight</span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span><strong>Optimizer</strong> (Adam, AdamW, RMSprop) = implementasi dari konsep tersebut</span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span>Gradient Descent bisa dipakai untuk model apapun, bukan hanya model linier</span></div>
+        <div class="check-item"><span class="warn-icon">⚠</span><span>Turunan dilakukan terhadap <strong>W (weight)</strong>, bukan terhadap y_pred!</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Varian Gradient Descent</div>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-label">Batch GD</div>
+          <div class="feature-val">Semua data</div>
+          <div class="feature-sub">Lambat, akurat</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Stochastic GD</div>
+          <div class="feature-val">1 data</div>
+          <div class="feature-sub">Cepat, tidak stabil</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Mini-batch GD ✓</div>
+          <div class="feature-val">Sebagian data</div>
+          <div class="feature-sub">Rekomendasi utama</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Di kode PyTorch</div>
+      <div class="code">
+optimizer.<span class="hl">zero_grad</span>()  &nbsp;&nbsp;<span class="comment"># reset gradient lama</span><br>
+loss.<span class="hl-blue">backward</span>()  &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># hitung gradient (BPTT di LSTM)</span><br>
+torch.nn.utils.<span class="hl-purple">clip_grad_norm_</span>(model.parameters(), <span class="hl">max_norm=1.0</span>)<br>
+optimizer.<span class="hl-green">step</span>()  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># update weight ← gradient descent!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== ALUR ======================== -->
+  <div id="sec-alur" class="section">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressBar" style="width:16.6%"></div>
+    </div>
+
+    <div class="step-tabs" id="stepTabs">
+      <div class="step-tab active" onclick="goStep(0)">1</div>
+      <div class="step-tab" onclick="goStep(1)">2</div>
+      <div class="step-tab" onclick="goStep(2)">3</div>
+      <div class="step-tab" onclick="goStep(3)">4</div>
+      <div class="step-tab" onclick="goStep(4)">5</div>
+      <div class="step-tab" onclick="goStep(5)">6</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-panel card active" id="sp-0">
+      <div class="step-header">
+        <div class="step-badge">1</div>
+        <div class="step-title-text">Inisialisasi weight secara random</div>
+      </div>
+      <p class="step-desc">Model belum tau apa-apa. Nilai weight (w) diisi angka acak kecil sebagai titik awal. Untuk project kamu, setiap fitur input punya weight sendiri.</p>
+      <div class="code">
+w = <span class="hl">random()</span>  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># misal: 0.23</span><br>
+b = <span class="hl">random()</span>  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># bias juga random</span><br><br>
+<span class="comment"># Untuk banyak fitur:</span><br>
+W = [<span class="hl">w1, w2, w3, ..., wn</span>]  &nbsp;<span class="comment"># satu w per fitur</span>
+      </div>
+      <div class="nav-btns"><button class="btn btn-primary" onclick="goStep(1)">Lanjut →</button></div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-panel card" id="sp-1">
+      <div class="step-header">
+        <div class="step-badge">2</div>
+        <div class="step-title-text">Forward pass — hitung prediksi</div>
+      </div>
+      <p class="step-desc">Input dimasukkan ke model untuk menghasilkan prediksi. Model mengalikan setiap fitur dengan weight-nya masing-masing.</p>
+      <div class="code">
+<span class="comment"># 1 fitur:</span><br>
+y_pred = <span class="hl-blue">w</span> · <span class="hl-green">x</span><br><br>
+<span class="comment"># Banyak fitur (project kamu):</span><br>
+y_pred = <span class="hl-blue">w1</span>·<span class="hl-green">x1</span> + <span class="hl-blue">w2</span>·<span class="hl-green">x2</span> + ... + <span class="hl-blue">wn</span>·<span class="hl-green">xn</span> + b<br>
+       = <span class="hl">W · X + b</span>
+      </div>
+      <div class="nav-btns">
+        <button class="btn" onclick="goStep(0)">← Kembali</button>
+        <button class="btn btn-primary" onclick="goStep(2)">Lanjut →</button>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-panel card" id="sp-2">
+      <div class="step-header">
+        <div class="step-badge">3</div>
+        <div class="step-title-text">Hitung Loss — seberapa salah?</div>
+      </div>
+      <p class="step-desc">Bandingkan prediksi dengan nilai asli. Tujuan training = membuat Loss <strong style="color:var(--text)">sekecil mungkin</strong>.</p>
+      <div class="code">
+<span class="comment"># MSE (Mean Squared Error):</span><br>
+L = (<span class="hl">y_pred</span> - <span class="hl-blue">y_act</span>)²<br><br>
+<span class="comment"># Huber Loss (rekomendasi project kamu):</span><br>
+L = { 0.5·(y_pred - y_act)²  &nbsp;&nbsp;jika |error| ≤ δ<br>
+    { δ·|error| - 0.5·δ²  &nbsp;&nbsp;&nbsp;&nbsp;jika |error| > δ
+      </div>
+      <div class="nav-btns">
+        <button class="btn" onclick="goStep(1)">← Kembali</button>
+        <button class="btn btn-primary" onclick="goStep(3)">Lanjut →</button>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-panel card" id="sp-3">
+      <div class="step-header">
+        <div class="step-badge">4</div>
+        <div class="step-title-text">Hitung Gradient — arah turun</div>
+      </div>
+      <p class="step-desc">Cari turunan Loss terhadap W menggunakan Chain Rule. Gradient menunjukkan <strong style="color:var(--text)">ke arah mana</strong> weight harus digeser.</p>
+      <div class="code">
+<span class="comment"># Chain Rule:</span><br>
+dL/dw = dL/dy_pred · dy_pred/dw<br><br>
+dL/dy_pred = <span class="hl">2(y_pred - y_act)</span><br>
+dy_pred/dw = <span class="hl-blue">x</span>  &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># karena y_pred = w·x</span><br><br>
+∴ dL/dw = <span class="hl">2(w·x - y_act) · x</span>  ✓<br><br>
+<span class="comment"># Di LSTM: proses ini disebut BPTT</span><br>
+<span class="comment"># t=1←t=2←t=3←t=4←t=5 (gradient mundur)</span>
+      </div>
+      <div class="nav-btns">
+        <button class="btn" onclick="goStep(2)">← Kembali</button>
+        <button class="btn btn-primary" onclick="goStep(4)">Lanjut →</button>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-panel card" id="sp-4">
+      <div class="step-header">
+        <div class="step-badge">5</div>
+        <div class="step-title-text">Update weight — inti gradient descent!</div>
+      </div>
+      <p class="step-desc">Geser weight ke arah yang mengurangi Loss. Inilah inti dari gradient descent — weight diupdate menggunakan gradient yang sudah dihitung.</p>
+      <div class="code">
+<span class="hl">w_baru</span> = w_lama - <span class="hl-blue">α</span> · dL/dw<br><br>
+<span class="comment"># α = learning rate</span><br>
+<span class="comment"># Terlalu besar → lompat-lompat</span><br>
+<span class="comment"># Terlalu kecil → sangat lambat</span><br><br>
+<span class="comment"># Untuk banyak fitur:</span><br>
+w1 = w1 - α · dL/dw1<br>
+w2 = w2 - α · dL/dw2<br>
+...  <span class="comment"># semua diupdate sekaligus</span>
+      </div>
+      <div class="nav-btns">
+        <button class="btn" onclick="goStep(3)">← Kembali</button>
+        <button class="btn btn-primary" onclick="goStep(5)">Lanjut →</button>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-panel card" id="sp-5">
+      <div class="step-header">
+        <div class="step-badge">6</div>
+        <div class="step-title-text">Ulangi sampai konvergen</div>
+      </div>
+      <p class="step-desc">Proses step 2–5 diulang berkali-kali sampai Loss tidak bisa turun lagi. Gunakan EarlyStopping agar otomatis berhenti.</p>
+      <div class="code">
+Epoch   1:  Loss = <span class="hl-red">4.52</span>  ↓<br>
+Epoch  10:  Loss = <span class="hl">1.23</span>  ↓<br>
+Epoch  50:  Loss = <span class="hl-blue">0.18</span>  ↓<br>
+Epoch 100:  Loss = <span class="hl-green">0.09</span>  ↓<br>
+Epoch 200:  Loss = <span class="hl-green">0.08</span>  <span class="comment">← konvergen ✓</span>
+      </div>
+      <div class="nav-btns">
+        <button class="btn" onclick="goStep(4)">← Kembali</button>
+        <button class="btn btn-primary" onclick="goStep(0)">Ulangi dari awal ↻</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== FLOWCHART ======================== -->
+  <div id="sec-flowchart" class="section">
+    <div class="card">
+      <div class="card-title">Alur lengkap gradient descent</div>
+      <div class="flowchart">
+        <div class="flow-node gray">
+          <div class="fn-label">Step 1</div>
+          <div class="fn-formula">Inisialisasi W random</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node blue">
+          <div class="fn-label">Step 2 — Forward Pass</div>
+          <div class="fn-formula">y_pred = W · X + b</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node purple">
+          <div class="fn-label">Step 3 — Hitung Loss</div>
+          <div class="fn-formula">L = (y_pred − y_act)²</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node amber">
+          <div class="fn-label">Step 4 — Gradient (BPTT)</div>
+          <div class="fn-formula">dL/dw = 2(w·x − y_act)·x</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node green">
+          <div class="fn-label">Step 5 — Update Weight</div>
+          <div class="fn-formula">w = w − α · dL/dw</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-diamond">Loss konvergen?</div>
+        <div class="loop-label">Tidak → kembali ke Step 2 &nbsp;|&nbsp; Ya → selesai ✓</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== MULTI INPUT ======================== -->
+  <div id="sec-multi" class="section">
+    <div class="card">
+      <div class="card-title">Konsep dasar</div>
+      <p class="step-desc">Kalau input banyak fitur, setiap fitur punya weight sendiri. Gradient descent tetap sama — hanya hitung gradient untuk setiap w secara terpisah, lalu update semua sekaligus.</p>
+      <div class="code">
+<span class="comment"># 1 fitur (sebelumnya):</span><br>
+y = <span class="hl-blue">w</span> · <span class="hl-green">x</span><br><br>
+<span class="comment"># Banyak fitur:</span><br>
+y = <span class="hl-blue">w1</span>·<span class="hl-green">x1</span> + <span class="hl-blue">w2</span>·<span class="hl-green">x2</span> + ... + <span class="hl-blue">wn</span>·<span class="hl-green">xn</span> + b<br>
+  = <span class="hl">W · X + b</span>  &nbsp;&nbsp;<span class="comment"># bentuk matrix</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Contoh — project peramalan beban trafo</div>
+      <div class="input-viz">
+        <div class="input-row">
+          <div class="input-box"><div class="xn">x1</div><div class="xv">beban t-1</div></div>
+          <div class="input-box"><div class="xn">x2</div><div class="xv">suhu</div></div>
+          <div class="input-box"><div class="xn">x3</div><div class="xv">kelembaban</div></div>
+          <div class="input-box"><div class="xn">x4</div><div class="xv">jam</div></div>
+          <div class="input-box"><div class="xn">x5</div><div class="xv">hari</div></div>
+          <div class="input-box"><div class="xn">x6</div><div class="xv">beban t-2</div></div>
+        </div>
+        <div class="viz-arrow">↓ dikalikan weight masing-masing</div>
+        <div class="weight-row-viz">
+          <div class="weight-box">w1·x1</div>
+          <div class="weight-box">w2·x2</div>
+          <div class="weight-box">w3·x3</div>
+          <div class="weight-box">w4·x4</div>
+          <div class="weight-box">w5·x5</div>
+          <div class="weight-box">w6·x6</div>
+        </div>
+        <div class="viz-arrow">↓ dijumlahkan</div>
+        <div class="result-viz">y_pred = prediksi beban 30 menit ke depan</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Gradient untuk setiap weight</div>
+      <div class="code">
+dL/dw1 = 2(y_pred - y_act) · <span class="hl-green">x1</span><br>
+dL/dw2 = 2(y_pred - y_act) · <span class="hl-green">x2</span><br>
+dL/dw3 = 2(y_pred - y_act) · <span class="hl-green">x3</span><br>
+...<br><br>
+<span class="comment"># Update semua sekaligus (matrix form):</span><br>
+<span class="hl">W_baru</span> = W_lama - α · <span class="hl-blue">dL/dW</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== MASALAH ======================== -->
+  <div id="sec-masalah" class="section">
+    <div class="problem-grid" style="margin-bottom:1.25rem">
+      <div class="problem-card">
+        <div class="problem-title">↘ Vanishing Gradient</div>
+        <div class="problem-desc">Gradient mengecil saat mundur melewati banyak timestep. Layer awal tidak belajar apa-apa.</div>
+        <div class="solution">✓ LSTM sudah dirancang untuk ini via cell state & gating mechanism</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">↗ Exploding Gradient</div>
+        <div class="problem-desc">Gradient membesar tak terkendali. Weight meledak, Loss jadi NaN.</div>
+        <div class="solution">✓ Gradient Clipping: clip_grad_norm_(max_norm=1.0)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">◎ Local Minimum</div>
+        <div class="problem-desc">Model terjebak di lembah kecil, bukan minimum global sebenarnya.</div>
+        <div class="solution">✓ Pakai AdamW atau tambahkan momentum</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">⟺ Learning Rate Salah</div>
+        <div class="problem-desc">Terlalu besar = lompat-lompat. Terlalu kecil = training sangat lambat.</div>
+        <div class="solution">✓ Pakai CosineAnnealingLR scheduler</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Solusi gradient clipping di PyTorch</div>
+      <div class="code">
+<span class="comment"># Tambahkan SEBELUM optimizer.step()</span><br>
+torch.nn.utils.<span class="hl-purple">clip_grad_norm_</span>(<br>
+&nbsp;&nbsp;model.parameters(),<br>
+&nbsp;&nbsp;<span class="hl">max_norm=1.0</span>  <span class="comment"># cegah exploding gradient</span><br>
+)
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== ACTIVATION FUNCTION ======================== -->
+  <div id="sec-activation" class="section">
+    <div class="card">
+      <div class="card-title">Apa itu activation function?</div>
+      <p class="step-desc">Tanpa activation function, neural network hanya bisa memodelkan hubungan <strong style="color:var(--text)">linier</strong> — berapapun layer yang ditambahkan, hasilnya tetap persamaan garis lurus. Activation function menambahkan <strong style="color:var(--text)">non-linearitas</strong> sehingga model bisa belajar pola yang kompleks.</p>
+      <div class="analogy" style="margin-bottom:0">
+        <div class="analogy-title">🔌 Analogi Saklar</div>
+        <p>Bayangkan neuron sebagai saklar listrik. Tanpa activation function, setiap neuron selalu meneruskan sinyal apa adanya. Dengan activation function, neuron bisa <strong>memutuskan</strong>: "apakah sinyal ini cukup penting untuk diteruskan ke layer berikutnya?"</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Posisi di neural network</div>
+      <div class="code">
+Input → [Linear: W·X + b] → <span class="hl">[Activation]</span> → Output<br><br>
+<span class="comment"># Tanpa activation (cuma linier):</span><br>
+Layer1: y = W1·x + b1<br>
+Layer2: y = W2·(W1·x+b1) + b2 = <span class="hl-red">masih linier!</span><br><br>
+<span class="comment"># Dengan activation:</span><br>
+Layer1: y = <span class="hl">ReLU</span>(W1·x + b1)<br>
+Layer2: y = <span class="hl">ReLU</span>(W2·y + b2) → <span class="hl-green">non-linier! ✓</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:1.25rem">
+      <div class="card" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="background:rgba(79,156,249,0.15);border:1px solid rgba(79,156,249,0.3);border-radius:8px;padding:3px 10px;font-family:var(--mono);font-size:12px;color:var(--blue)">ReLU</span>
+          <span style="font-size:11px;color:var(--green);font-weight:500">Paling populer</span>
+        </div>
+        <div class="code" style="margin-bottom:8px;padding:8px 12px">f(x) = <span class="hl">max(0, x)</span></div>
+        <svg width="100%" viewBox="0 0 180 100" style="display:block;margin-bottom:8px">
+          <line x1="10" y1="50" x2="170" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="90" y1="10" x2="90" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <polyline points="10,90 90,50 170,10" fill="none" stroke="#4f9cf9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="10,50 90,50" fill="none" stroke="#4f9cf9" stroke-width="2.5" stroke-linecap="round"/>
+          <text x="14" y="46" font-size="9" fill="rgba(255,255,255,0.3)" font-family="monospace">x&lt;0: 0</text>
+          <text x="100" y="46" font-size="9" fill="rgba(255,255,255,0.3)" font-family="monospace">x&gt;0: x</text>
+        </svg>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Negatif jadi 0, positif diteruskan. Cepat dan efisien. Masalah: <em>dying ReLU</em> jika neuron selalu dapat input negatif.</p>
+        <div style="margin-top:8px;font-size:11px;color:var(--blue)">✓ Cocok untuk: hidden layer umum, CNN</div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:3px 10px;font-family:var(--mono);font-size:12px;color:var(--purple)">Sigmoid</span>
+          <span style="font-size:11px;color:var(--muted);font-weight:500">Klasik</span>
+        </div>
+        <div class="code" style="margin-bottom:8px;padding:8px 12px">f(x) = <span class="hl-purple">1 / (1 + e⁻ˣ)</span></div>
+        <svg width="100%" viewBox="0 0 180 100" style="display:block;margin-bottom:8px">
+          <line x1="10" y1="50" x2="170" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="90" y1="10" x2="90" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <path d="M10,88 C30,86 50,75 70,60 S110,35 130,25 S160,16 170,14" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="10" y1="14" x2="170" y2="14" stroke="rgba(167,139,250,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+          <line x1="10" y1="88" x2="170" y2="88" stroke="rgba(167,139,250,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+          <text x="14" y="12" font-size="9" fill="rgba(255,255,255,0.3)" font-family="monospace">1.0</text>
+          <text x="14" y="86" font-size="9" fill="rgba(255,255,255,0.3)" font-family="monospace">0.0</text>
+        </svg>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Output selalu antara 0–1. Bagus untuk probabilitas. Masalah: <em>vanishing gradient</em> di ujung kurva (saturasi).</p>
+        <div style="margin-top:8px;font-size:11px;color:var(--purple)">✓ Cocok untuk: output layer klasifikasi biner, gate LSTM</div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="background:rgba(62,207,142,0.12);border:1px solid rgba(62,207,142,0.3);border-radius:8px;padding:3px 10px;font-family:var(--mono);font-size:12px;color:var(--green)">Tanh</span>
+          <span style="font-size:11px;color:var(--green);font-weight:500">Di LSTM!</span>
+        </div>
+        <div class="code" style="margin-bottom:8px;padding:8px 12px">f(x) = <span class="hl-green">(eˣ−e⁻ˣ)/(eˣ+e⁻ˣ)</span></div>
+        <svg width="100%" viewBox="0 0 180 100" style="display:block;margin-bottom:8px">
+          <line x1="10" y1="50" x2="170" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="90" y1="10" x2="90" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <path d="M10,82 C30,78 50,65 70,52 S110,32 130,22 S160,14 170,12" fill="none" stroke="#3ecf8e" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="10" y1="12" x2="170" y2="12" stroke="rgba(62,207,142,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+          <line x1="10" y1="88" x2="170" y2="88" stroke="rgba(62,207,142,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+          <text x="14" y="10" font-size="9" fill="rgba(255,255,255,0.3)" font-family="monospace">+1</text>
+          <text x="14" y="86" font-size="9" fill="rgba(255,255,255,0.3)" font-family="monospace">-1</text>
+        </svg>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Output antara −1 hingga +1, terpusat di nol. Lebih baik dari Sigmoid untuk hidden layer. Dipakai di gate LSTM.</p>
+        <div style="margin-top:8px;font-size:11px;color:var(--green)">✓ Cocok untuk: cell state LSTM, hidden layer RNN</div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:3px 10px;font-family:var(--mono);font-size:12px;color:var(--amber)">Leaky ReLU</span>
+        </div>
+        <div class="code" style="margin-bottom:8px;padding:8px 12px">f(x) = <span class="hl">x</span> &nbsp;jika x&gt;0<br>f(x) = <span class="hl">0.01x</span> jika x≤0</div>
+        <svg width="100%" viewBox="0 0 180 100" style="display:block;margin-bottom:8px">
+          <line x1="10" y1="50" x2="170" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="90" y1="10" x2="90" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <polyline points="10,58 90,50 170,10" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="14" y="46" font-size="9" fill="rgba(255,255,255,0.3)" font-family="monospace">slope 0.01</text>
+        </svg>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Perbaikan dari ReLU — negatif tidak langsung jadi 0, tapi dikali 0.01. Mencegah <em>dying ReLU</em>.</p>
+        <div style="margin-top:8px;font-size:11px;color:var(--amber)">✓ Cocok untuk: pengganti ReLU jika banyak neuron mati</div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="background:rgba(244,107,93,0.12);border:1px solid rgba(244,107,93,0.3);border-radius:8px;padding:3px 10px;font-family:var(--mono);font-size:12px;color:var(--red)">Softmax</span>
+          <span style="font-size:11px;color:var(--muted)">Klasifikasi</span>
+        </div>
+        <div class="code" style="margin-bottom:8px;padding:8px 12px">f(xᵢ) = <span class="hl-red">eˣⁱ / Σeˣʲ</span></div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-end;height:60px;padding:0 4px">
+          <div style="flex:1;background:rgba(244,107,93,0.15);border:1px solid rgba(244,107,93,0.2);border-radius:4px 4px 0 0;height:25%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-size:9px;color:var(--red);font-family:monospace">0.1</div>
+          <div style="flex:1;background:rgba(244,107,93,0.15);border:1px solid rgba(244,107,93,0.2);border-radius:4px 4px 0 0;height:60%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-size:9px;color:var(--red);font-family:monospace">0.7</div>
+          <div style="flex:1;background:rgba(244,107,93,0.15);border:1px solid rgba(244,107,93,0.2);border-radius:4px 4px 0 0;height:15%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-size:9px;color:var(--red);font-family:monospace">0.05</div>
+          <div style="flex:1;background:rgba(244,107,93,0.15);border:1px solid rgba(244,107,93,0.2);border-radius:4px 4px 0 0;height:25%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-size:9px;color:var(--red);font-family:monospace">0.15</div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Mengubah output menjadi distribusi probabilitas — semua nilai positif dan jumlahnya = 1.0.</p>
+        <div style="margin-top:8px;font-size:11px;color:var(--red)">✓ Cocok untuk: output layer klasifikasi multi-kelas</div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="background:rgba(122,122,140,0.15);border:1px solid rgba(122,122,140,0.3);border-radius:8px;padding:3px 10px;font-family:var(--mono);font-size:12px;color:var(--muted)">Linear</span>
+          <span style="font-size:11px;color:var(--muted)">Tanpa aktivasi</span>
+        </div>
+        <div class="code" style="margin-bottom:8px;padding:8px 12px">f(x) = <span class="comment">x</span></div>
+        <svg width="100%" viewBox="0 0 180 100" style="display:block;margin-bottom:8px">
+          <line x1="10" y1="50" x2="170" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="90" y1="10" x2="90" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="10" y1="90" x2="170" y2="10" stroke="rgba(122,122,140,0.6)" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6">Tidak ada transformasi non-linier. Dipakai di output layer untuk prediksi nilai kontinu (regresi).</p>
+        <div style="margin-top:8px;font-size:11px;color:var(--muted)">✓ Cocok untuk: output layer regresi (project kamu!)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Activation function di LSTM — project kamu</div>
+      <p class="step-desc">LSTM punya 4 gate, masing-masing pakai activation function yang berbeda sesuai fungsinya:</p>
+      <div class="code">
+<span class="comment"># 4 gate di LSTM:</span><br>
+Forget gate  : f = <span class="hl-purple">sigmoid</span>(Wf·[h,x] + bf) <span class="comment"># 0-1: lupakan?</span><br>
+Input gate   : i = <span class="hl-purple">sigmoid</span>(Wi·[h,x] + bi) <span class="comment"># 0-1: simpan?</span><br>
+Cell update  : g = <span class="hl-green">tanh</span>(Wg·[h,x] + bg)   <span class="comment"># -1,1: nilai baru</span><br>
+Output gate  : o = <span class="hl-purple">sigmoid</span>(Wo·[h,x] + bo) <span class="comment"># 0-1: keluarkan?</span><br><br>
+c_t = f * c_prev + i * g<br>
+h_t = o * <span class="hl-green">tanh</span>(c_t) <span class="comment"># output akhir tiap timestep</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+        <div style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:10px;padding:10px 14px">
+          <div style="font-size:11px;color:var(--purple);font-family:var(--mono);margin-bottom:4px">SIGMOID di gate</div>
+          <div style="font-size:12px;color:var(--muted)">Output 0–1 = cocok untuk "seberapa banyak yang dilewatkan" (0=blokir, 1=lewatkan semua)</div>
+        </div>
+        <div style="background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);border-radius:10px;padding:10px 14px">
+          <div style="font-size:11px;color:var(--green);font-family:var(--mono);margin-bottom:4px">TANH di cell/output</div>
+          <div style="font-size:12px;color:var(--muted)">Output −1 hingga +1 = cocok untuk nilai yang bisa naik atau turun (beban trafo fluktuatif)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Ringkasan — kapan pakai yang mana?</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border2)">
+              <th style="text-align:left;padding:8px 10px;color:var(--muted);font-weight:500;font-family:var(--mono);font-size:11px">FUNGSI</th>
+              <th style="text-align:left;padding:8px 10px;color:var(--muted);font-weight:500;font-family:var(--mono);font-size:11px">OUTPUT</th>
+              <th style="text-align:left;padding:8px 10px;color:var(--muted);font-weight:500;font-family:var(--mono);font-size:11px">PAKAI DI</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--blue);font-family:var(--mono);font-weight:700">ReLU</td><td style="padding:8px 10px;color:var(--muted)">0 sampai ∞</td><td style="padding:8px 10px;color:var(--muted)">Hidden layer umum, CNN</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--purple);font-family:var(--mono);font-weight:700">Sigmoid</td><td style="padding:8px 10px;color:var(--muted)">0 sampai 1</td><td style="padding:8px 10px;color:var(--muted)">Gate LSTM, output biner</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--green);font-family:var(--mono);font-weight:700">Tanh</td><td style="padding:8px 10px;color:var(--muted)">−1 sampai +1</td><td style="padding:8px 10px;color:var(--muted)">Cell state LSTM, RNN</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--amber);font-family:var(--mono);font-weight:700">Leaky ReLU</td><td style="padding:8px 10px;color:var(--muted)">−∞ sampai ∞</td><td style="padding:8px 10px;color:var(--muted)">Pengganti ReLU jika dying</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--red);font-family:var(--mono);font-weight:700">Softmax</td><td style="padding:8px 10px;color:var(--muted)">0–1, jumlah=1</td><td style="padding:8px 10px;color:var(--muted)">Output klasifikasi multi-kelas</td></tr>
+            <tr><td style="padding:8px 10px;color:var(--muted);font-family:var(--mono);font-weight:700">Linear</td><td style="padding:8px 10px;color:var(--muted)">−∞ sampai ∞</td><td style="padding:8px 10px;color:var(--muted)">Output layer regresi (project kamu!)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;background:var(--green-dim);border:1px solid rgba(62,207,142,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--green)">
+        ✓ Project peramalan beban trafo: hidden layer pakai <strong>ReLU / Tanh</strong>, output layer pakai <strong>Linear</strong> (prediksi nilai kontinu, bukan klasifikasi)
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== KESIMPULAN ======================== -->
+
+  <!-- ======================== BACKPROPAGATION ======================== -->
+  <div id="sec-backprop" class="section">
+
+    <!-- KONSEP DASAR -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <span style="font-size:28px">🔁</span>
+        <div>
+          <div class="card-title" style="margin-bottom:2px">Konsep dasar</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">Backpropagation = Analisis Kesalahan Mundur</div>
+        </div>
+      </div>
+      <div class="analogy" style="margin-bottom:1rem">
+        <div class="analogy-title">🍳 Analogi: Nasi Goreng Keasinan</div>
+        <p>Kamu masak nasi goreng, hasilnya keasinan (= Loss besar). Pertanyaannya bukan <em>"berapa asin garamnya"</em> — tapi: <strong>"kalau garam dikurangi 1 sendok, keasinan berkurang berapa?"</strong></p>
+      </div>
+      <div class="code">
+<span class="comment"># Setiap bahan = satu weight</span><br>
+<span class="comment"># Gradient = seberapa besar kontribusi tiap bahan ke keasinan</span><br><br>
+dL/dw_garam  = <span class="hl">+8.2</span>  <span class="comment">← garam pengaruh besar ke keasinan</span><br>
+dL/dw_kecap  = <span class="hl">+3.1</span>  <span class="comment">← kecap pengaruh sedang</span><br>
+dL/dw_saos   = <span class="hl">+0.4</span>  <span class="comment">← saos pengaruh kecil</span>
+      </div>
+    </div>
+
+    <!-- PERBEDAAN BACKPROP VS GRADIENT DESCENT -->
+    <div class="card">
+      <div class="card-title">Backprop vs Gradient Descent — bedanya apa?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.25);border-radius:10px;padding:1rem">
+          <div style="font-size:11px;color:var(--purple);font-family:var(--mono);margin-bottom:6px">BACKPROPAGATION</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">ANALISIS kesalahan</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">"Ini salahnya dimana dan seberapa besar pengaruh tiap weight ke Loss"</div>
+          <div style="margin-top:10px" class="code" style="padding:8px">loss.<span class="hl-purple">backward</span>()</div>
+        </div>
+        <div style="background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.25);border-radius:10px;padding:1rem">
+          <div style="font-size:11px;color:var(--green);font-family:var(--mono);margin-bottom:6px">GRADIENT DESCENT</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">UPDATE weight</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">"Oke, sekarang perbaiki semua weight berdasarkan hasil analisis tadi"</div>
+          <div style="margin-top:10px" class="code" style="padding:8px">optimizer.<span class="hl-green">step</span>()</div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;font-size:13px;color:var(--muted);line-height:1.7">
+        <strong style="color:var(--red)">Backprop tanpa gradient descent</strong> = tahu masalahnya tapi tidak diperbaiki<br>
+        <strong style="color:var(--red)">Gradient descent tanpa backprop</strong> = mau perbaiki tapi tidak tahu yang mana<br>
+        <strong style="color:var(--green)">Keduanya bersama</strong> = AI bisa belajar! ✓
+      </div>
+    </div>
+
+    <!-- STEP BY STEP INTERAKTIF -->
+    <div class="card">
+      <div class="card-title">Step by step — cara backprop hitung gradient</div>
+      <div class="step-tabs" id="bpTabs">
+        <div class="step-tab active" onclick="goBP(0)">1</div>
+        <div class="step-tab" onclick="goBP(1)">2</div>
+        <div class="step-tab" onclick="goBP(2)">3</div>
+        <div class="step-tab" onclick="goBP(3)">4</div>
+        <div class="step-tab" onclick="goBP(4)">5</div>
+      </div>
+
+      <div class="step-panel active" id="bp-0">
+        <div class="step-header">
+          <div class="step-badge">1</div>
+          <div class="step-title-text">Forward pass — prediksi dulu</div>
+        </div>
+        <p class="step-desc">Model membaca input dan menghasilkan prediksi. Semua nilai di setiap layer disimpan karena dibutuhkan saat mundur nanti.</p>
+        <div class="code">
+<span class="comment"># Contoh project kamu:</span><br>
+input  = [suhu=32, jam=8, beban_lalu=150]<br>
+y_pred = model(<span class="hl-blue">input</span>)  <span class="comment"># → 160 MW</span><br>
+y_actual = <span class="hl-green">175</span>  <span class="comment"># kenyataannya</span>
+        </div>
+        <div class="nav-btns"><button class="btn btn-primary" onclick="goBP(1)">Lanjut →</button></div>
+      </div>
+
+      <div class="step-panel" id="bp-1">
+        <div class="step-header">
+          <div class="step-badge">2</div>
+          <div class="step-title-text">Hitung Loss — seberapa meleset?</div>
+        </div>
+        <p class="step-desc">Bandingkan prediksi dengan kenyataan. Loss yang besar = prediksi jauh meleset.</p>
+        <div class="code">
+Loss = (y_pred - y_actual)²<br>
+     = (160 - 175)²<br>
+     = (-15)²<br>
+     = <span class="hl">225</span>  <span class="comment">← terlalu besar! perlu diperbaiki</span>
+        </div>
+        <div class="nav-btns">
+          <button class="btn" onclick="goBP(0)">← Kembali</button>
+          <button class="btn btn-primary" onclick="goBP(2)">Lanjut →</button>
+        </div>
+      </div>
+
+      <div class="step-panel" id="bp-2">
+        <div class="step-header">
+          <div class="step-badge">3</div>
+          <div class="step-title-text">Backprop — mundur, hitung gradient tiap weight</div>
+        </div>
+        <p class="step-desc">Inilah inti backpropagation. Bukan hitung "loss tiap weight" — tapi hitung <strong style="color:var(--text)">"kalau weight ini diubah sedikit, loss naik atau turun seberapa?"</strong></p>
+        <div class="code">
+<span class="comment"># Rumus gradient (dari Chain Rule):</span><br>
+dL/dw = 2(y_pred - y_actual) · x<br><br>
+<span class="comment"># Hasil untuk tiap weight:</span><br>
+dL/dw_suhu       = 2(-15) · 32  = <span class="hl-red">-960</span>  <span class="comment">← w_suhu terlalu kecil</span><br>
+dL/dw_jam        = 2(-15) · 8   = <span class="hl-red">-240</span>  <span class="comment">← w_jam terlalu kecil</span><br>
+dL/dw_beban_lalu = 2(-15) · 150 = <span class="hl-red">-4500</span> <span class="comment">← paling berpengaruh!</span>
+        </div>
+        <div class="nav-btns">
+          <button class="btn" onclick="goBP(1)">← Kembali</button>
+          <button class="btn btn-primary" onclick="goBP(3)">Lanjut →</button>
+        </div>
+      </div>
+
+      <div class="step-panel" id="bp-3">
+        <div class="step-header">
+          <div class="step-badge">4</div>
+          <div class="step-title-text">Arti nilai gradient</div>
+        </div>
+        <p class="step-desc">Nilai gradient memberi tahu dua hal sekaligus: arah (perlu naik atau turun) dan besarnya perubahan yang dibutuhkan.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
+          <div style="background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);border-radius:8px;padding:10px 14px;font-size:13px">
+            <span style="color:var(--green);font-family:var(--mono);font-weight:700">dL/dw = negatif (-)</span>
+            <span style="color:var(--muted)"> → weight terlalu kecil → perlu <strong style="color:var(--green)">dibesarkan</strong></span>
+          </div>
+          <div style="background:rgba(244,107,93,0.08);border:1px solid rgba(244,107,93,0.2);border-radius:8px;padding:10px 14px;font-size:13px">
+            <span style="color:var(--red);font-family:var(--mono);font-weight:700">dL/dw = positif (+)</span>
+            <span style="color:var(--muted)"> → weight terlalu besar → perlu <strong style="color:var(--red)">dikecilkan</strong></span>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px">
+            <span style="color:var(--muted);font-family:var(--mono);font-weight:700">dL/dw = nol (0)</span>
+            <span style="color:var(--muted)"> → weight sudah pas → <strong style="color:var(--blue)">tidak perlu diubah</strong></span>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px">
+            <span style="color:var(--amber);font-family:var(--mono);font-weight:700">|dL/dw| besar</span>
+            <span style="color:var(--muted)"> → kontribusi weight ke error besar → perubahan lebih besar</span>
+          </div>
+        </div>
+        <div class="nav-btns">
+          <button class="btn" onclick="goBP(2)">← Kembali</button>
+          <button class="btn btn-primary" onclick="goBP(4)">Lanjut →</button>
+        </div>
+      </div>
+
+      <div class="step-panel" id="bp-4">
+        <div class="step-header">
+          <div class="step-badge">5</div>
+          <div class="step-title-text">Update weight — gradient descent!</div>
+        </div>
+        <p class="step-desc">Pakai gradient hasil backprop untuk update semua weight sekaligus.</p>
+        <div class="code">
+<span class="comment"># α = 0.001 (learning rate)</span><br><br>
+w_suhu_baru       = w_suhu - 0.001 · (<span class="hl-red">-960</span>)<br>
+                  = w_suhu <span class="hl-green">+ 0.96</span>  <span class="comment">← naik ✓</span><br><br>
+w_jam_baru        = w_jam - 0.001 · (<span class="hl-red">-240</span>)<br>
+                  = w_jam <span class="hl-green">+ 0.24</span>   <span class="comment">← naik ✓</span><br><br>
+w_beban_lalu_baru = w_beban_lalu - 0.001 · (<span class="hl-red">-4500</span>)<br>
+                  = w_beban_lalu <span class="hl-green">+ 4.5</span> <span class="comment">← naik paling banyak ✓</span>
+        </div>
+        <div style="margin-top:8px;background:var(--green-dim);border:1px solid rgba(62,207,142,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--green)">
+          ✓ Prediksi berikutnya akan lebih mendekati 175 MW!
+        </div>
+        <div class="nav-btns">
+          <button class="btn" onclick="goBP(3)">← Kembali</button>
+          <button class="btn btn-primary" onclick="goBP(0)">Ulangi ↻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DI LSTM: BPTT -->
+    <div class="card">
+      <div class="card-title">Di LSTM: namanya BPTT</div>
+      <p class="step-desc">Di LSTM ada dimensi tambahan yaitu waktu — gradient harus mundur melewati setiap timestep:</p>
+      <div class="code">
+<span class="comment"># Forward: kiri ke kanan</span><br>
+t=1 → t=2 → t=3 → t=4 → t=5 → <span class="hl-green">output</span><br><br>
+<span class="comment"># Backward (BPTT): kanan ke kiri</span><br>
+t=1 ← t=2 ← t=3 ← t=4 ← t=5 ← <span class="hl">Loss</span><br><br>
+<span class="comment"># Gradient mengalir mundur melewati setiap timestep</span><br>
+<span class="comment"># Makanya disebut Backpropagation Through TIME</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+        <div style="background:rgba(79,156,249,0.08);border:1px solid rgba(79,156,249,0.2);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:6px">BACKPROP BIASA</div>
+          <div style="font-size:13px;color:var(--muted)">Mundur melewati layer (vertikal)</div>
+          <div class="code" style="margin-top:8px;padding:8px;font-size:11px">Layer3 ← Layer2 ← Layer1</div>
+        </div>
+        <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--amber);font-family:var(--mono);margin-bottom:6px">BPTT (LSTM)</div>
+          <div style="font-size:13px;color:var(--muted)">Mundur melewati layer DAN waktu</div>
+          <div class="code" style="margin-top:8px;padding:8px;font-size:11px">t5 ← t4 ← t3 ← t2 ← t1</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KODE LENGKAP -->
+    <div class="card">
+      <div class="card-title">Kode lengkap 1 iterasi training</div>
+      <div class="code">
+<span class="comment"># 1. Forward pass</span><br>
+y_pred = model(<span class="hl-blue">X</span>)<br><br>
+<span class="comment"># 2. Hitung loss</span><br>
+loss = criterion(y_pred, <span class="hl-green">y_actual</span>)<br><br>
+<span class="comment"># 3. Reset gradient lama (WAJIB sebelum backprop)</span><br>
+optimizer.<span class="hl-purple">zero_grad</span>()<br><br>
+<span class="comment"># 4. BACKPROPAGATION — hitung gradient semua weight</span><br>
+loss.<span class="hl">backward</span>()<br><br>
+<span class="comment"># 5. Gradient clipping (cegah exploding gradient)</span><br>
+torch.nn.utils.clip_grad_norm_(model.parameters(), <span class="hl">max_norm=1.0</span>)<br><br>
+<span class="comment"># 6. GRADIENT DESCENT — update semua weight</span><br>
+optimizer.<span class="hl-green">step</span>()
+      </div>
+      <div style="background:var(--amber-dim);border:1px solid rgba(245,166,35,0.2);border-radius:8px;padding:10px 14px;margin-top:4px;font-size:13px;color:var(--amber)">
+        ⚠️ <strong>zero_grad()</strong> wajib dipanggil sebelum backward() — kalau tidak, gradient lama akan terakumulasi dan merusak training!
+      </div>
+    </div>
+
+    <!-- RINGKASAN -->
+    <div class="card">
+      <div class="card-title">Ringkasan — 3 konsep yang sering tertukar</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:12px;align-items:flex-start;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:10px;padding:12px">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--purple);font-weight:700;flex-shrink:0;min-width:120px">Backprop</div>
+          <div style="font-size:13px;color:var(--muted)">Hitung <strong style="color:var(--text)">seberapa besar pengaruh</strong> tiap weight ke Loss — pakai Chain Rule mundur dari output ke input</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);border-radius:10px;padding:12px">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--green);font-weight:700;flex-shrink:0;min-width:120px">Gradient Descent</div>
+          <div style="font-size:13px;color:var(--muted)"><strong style="color:var(--text)">Update weight</strong> menggunakan gradient hasil backprop — geser weight ke arah yang kurangi Loss</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:10px;padding:12px">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--amber);font-weight:700;flex-shrink:0;min-width:120px">BPTT</div>
+          <div style="font-size:13px;color:var(--muted)">Backprop versi LSTM — mundur melewati layer <strong style="color:var(--text)">dan timestep</strong> sekaligus</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ======================== ANALOGI ======================== -->
+  <div id="sec-analogi" class="section">
+
+    <!-- ANALOGI 1: PEGUNUNGAN -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <span style="font-size:28px">⛰️</span>
+        <div>
+          <div class="card-title" style="margin-bottom:2px">Analogi 1</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">Gradient Descent = Turun Gunung dalam Gelap</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px">DUNIA NYATA</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Kamu berdiri di pegunungan gelap, ingin turun ke lembah. Kamu tidak bisa lihat seluruh peta — hanya bisa meraba tanah di sekitar kaki untuk cari arah yang paling menurun.
+          </div>
+        </div>
+        <div style="background:var(--blue-dim);border:1px solid rgba(79,156,249,0.2);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:8px">DI AI</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Model mencari nilai weight yang menghasilkan Loss terkecil. Tidak bisa lihat semua kemungkinan — hanya bisa hitung gradient di posisi sekarang lalu geser sedikit.
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">📍</div>
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:2px">POSISI</div>
+          <div style="font-size:12px;color:var(--muted)">Nilai weight sekarang</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">📏</div>
+          <div style="font-size:11px;color:var(--amber);font-family:var(--mono);margin-bottom:2px">KETINGGIAN</div>
+          <div style="font-size:12px;color:var(--muted)">Nilai Loss</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">👣</div>
+          <div style="font-size:11px;color:var(--green);font-family:var(--mono);margin-bottom:2px">LANGKAH KAKI</div>
+          <div style="font-size:12px;color:var(--muted)">Learning rate (α)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALOGI 2: SAKLAR -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <span style="font-size:28px">🔌</span>
+        <div>
+          <div class="card-title" style="margin-bottom:2px">Analogi 2</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">Activation Function = Saklar Listrik</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px">DUNIA NYATA</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Saklar listrik memutuskan apakah arus listrik diteruskan atau tidak. Kalau tegangan cukup → nyala. Kalau tidak → mati.
+          </div>
+        </div>
+        <div style="background:var(--blue-dim);border:1px solid rgba(79,156,249,0.2);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:8px">DI AI</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Activation function memutuskan apakah sinyal dari neuron diteruskan ke layer berikutnya. ReLU: kalau negatif → blokir. Kalau positif → teruskan.
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:rgba(79,156,249,0.08);border:1px solid rgba(79,156,249,0.2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:4px">ReLU</div>
+          <div style="font-size:20px;margin-bottom:4px">💡</div>
+          <div style="font-size:12px;color:var(--muted)">Negatif = mati<br>Positif = nyala</div>
+        </div>
+        <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:var(--purple);font-family:var(--mono);margin-bottom:4px">Sigmoid</div>
+          <div style="font-size:20px;margin-bottom:4px">🔆</div>
+          <div style="font-size:12px;color:var(--muted)">Dimmer 0–1<br>bisa redup/terang</div>
+        </div>
+        <div style="background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:var(--green);font-family:var(--mono);margin-bottom:4px">Tanh</div>
+          <div style="font-size:20px;margin-bottom:4px">↕️</div>
+          <div style="font-size:12px;color:var(--muted)">Bisa positif<br>atau negatif</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALOGI 3: BATU BATA -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <span style="font-size:28px">🧱</span>
+        <div>
+          <div class="card-title" style="margin-bottom:2px">Analogi 3</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">Layer Neural Network = Tumpukan Batu Bata</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px">DUNIA NYATA</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Satu batu bata tidak bisa membuat rumah yang kompleks. Tapi kalau ditumpuk dengan cara yang tepat — pakai semen di antaranya — kamu bisa membangun apapun.
+          </div>
+        </div>
+        <div style="background:var(--blue-dim);border:1px solid rgba(79,156,249,0.2);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:8px">DI AI</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Satu persamaan linier tidak bisa model data kompleks. Tapi kalau ditumpuk berlapis dengan activation function di antaranya — bisa aproksimasi fungsi apapun.
+          </div>
+        </div>
+      </div>
+      <div class="code">
+<span class="comment"># Persamaan linier = batu bata</span><br>
+<span class="comment"># Activation function = semen</span><br><br>
+Layer 1: <span class="hl-blue">W1·x + b1</span> → <span class="hl">ReLU</span> → output1<br>
+Layer 2: <span class="hl-blue">W2·output1 + b2</span> → <span class="hl">ReLU</span> → output2<br>
+Layer 3: <span class="hl-blue">W3·output2 + b3</span> → <span class="hl-green">Linear</span> → prediksi<br><br>
+<span class="comment"># Makin banyak tumpukan = makin kompleks yang bisa dipelajari</span>
+      </div>
+    </div>
+
+    <!-- ANALOGI 4: GAS MOBIL -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <span style="font-size:28px">🚗</span>
+        <div>
+          <div class="card-title" style="margin-bottom:2px">Analogi 4</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">m dan b = Gas & Posisi Awal Mobil</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px">DUNIA NYATA</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            <strong style="color:var(--text)">Gas (m/w)</strong> = menentukan seberapa cepat mobil bergerak saat pedal diinjak.<br><br>
+            <strong style="color:var(--text)">Posisi awal (b)</strong> = mobil sudah ada di km 10 sebelum jalan — titik awal sebelum bergerak.
+          </div>
+        </div>
+        <div style="background:var(--blue-dim);border:1px solid rgba(79,156,249,0.2);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:8px">DI AI (y = wx + b)</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            <strong style="color:var(--text)">w (weight)</strong> = seberapa besar pengaruh input x terhadap output y.<br><br>
+            <strong style="color:var(--text)">b (bias)</strong> = nilai dasar output meskipun semua input = 0.
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--amber);font-family:var(--mono);margin-bottom:6px">w = WEIGHT (Gas)</div>
+          <div class="code" style="padding:8px;margin-bottom:6px">y = <span class="hl">2.5</span>·x + b<br><span class="comment"># suhu naik 1°C</span><br><span class="comment"># beban naik 2.5 MW</span></div>
+          <div style="font-size:12px;color:var(--muted)">Makin besar w, makin besar pengaruh fitur itu</div>
+        </div>
+        <div style="background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--green);font-family:var(--mono);margin-bottom:6px">b = BIAS (Posisi awal)</div>
+          <div class="code" style="padding:8px;margin-bottom:6px">y = w·x + <span class="hl-green">50</span><br><span class="comment"># suhu = 0°C pun</span><br><span class="comment"># beban tetap 50 MW</span></div>
+          <div style="font-size:12px;color:var(--muted)">Beban dasar trafo meski semua kondisi = 0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALOGI 5: KEPRIBADIAN NEURON -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <span style="font-size:28px">🧠</span>
+        <div>
+          <div class="card-title" style="margin-bottom:2px">Analogi 5</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">Activation Function = Kepribadian Neuron</div>
+        </div>
+      </div>
+      <p class="step-desc">Setiap jenis activation function punya "kepribadian" yang berbeda dalam merespons sinyal masuk:</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border-radius:10px;padding:12px">
+          <span style="font-size:22px;flex-shrink:0">😤</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:2px">ReLU — "Kalau tidak positif, saya diam"</div>
+            <div style="font-size:12px;color:var(--muted)">Keras dan tegas. Hanya meneruskan sinyal positif, langsung buang yang negatif. Efisien tapi bisa terlalu keras.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border-radius:10px;padding:12px">
+          <span style="font-size:22px;flex-shrink:0">😌</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--purple);margin-bottom:2px">Sigmoid — "Saya selalu kasih pendapat, tapi tidak pernah ekstrem"</div>
+            <div style="font-size:12px;color:var(--muted)">Selalu output antara 0–1. Tidak pernah bilang "ya 100%" atau "tidak 0%" secara ekstrem — selalu ada di tengah.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border-radius:10px;padding:12px">
+          <span style="font-size:22px;flex-shrink:0">⚖️</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:2px">Tanh — "Saya bisa positif atau negatif, tapi tetap seimbang"</div>
+            <div style="font-size:12px;color:var(--muted)">Terpusat di nol. Bisa ekspresikan nilai positif DAN negatif. Cocok untuk data yang bisa naik-turun seperti beban trafo.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border-radius:10px;padding:12px">
+          <span style="font-size:22px;flex-shrink:0">🤝</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:2px">Leaky ReLU — "Saya keras, tapi tidak kejam"</div>
+            <div style="font-size:12px;color:var(--muted)">Seperti ReLU tapi tidak langsung bunuh sinyal negatif — dikecilkan sedikit saja. Lebih toleran dari ReLU.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALOGI 6: KURVA BEZIER -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <span style="font-size:28px">📐</span>
+        <div>
+          <div class="card-title" style="margin-bottom:2px">Analogi 6</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">Neural Network = Kurva dari Garis-Garis Kecil</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px">DUNIA NYATA</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Kurva yang sangat kompleks (seperti huruf S, spiral, gelombang) bisa dibentuk dari banyak <strong style="color:var(--text)">garis lurus kecil</strong> yang disambung dengan sudut tertentu. Makin banyak garis → makin mulus kurvanya.
+          </div>
+        </div>
+        <div style="background:var(--blue-dim);border:1px solid rgba(79,156,249,0.2);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--blue);font-family:var(--mono);margin-bottom:8px">DI AI</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7">
+            Pola data yang kompleks bisa dipelajari dari banyak <strong style="color:var(--text)">persamaan linier kecil</strong> yang disambung dengan activation function. Makin banyak neuron/layer → makin kompleks pola yang bisa dipelajari.
+          </div>
+        </div>
+      </div>
+      <svg width="100%" viewBox="0 0 640 120" style="display:block">
+        <text x="60" y="15" font-size="11" fill="rgba(255,255,255,0.3)" font-family="monospace" text-anchor="middle">Garis lurus</text>
+        <line x1="20" y1="90" x2="100" y2="40" stroke="#4f9cf9" stroke-width="2" stroke-linecap="round"/>
+        <text x="220" y="15" font-size="11" fill="rgba(255,255,255,0.3)" font-family="monospace" text-anchor="middle">Beberapa garis</text>
+        <polyline points="130,90 160,60 190,75 230,35 270,55" fill="none" stroke="#4f9cf9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="450" y="15" font-size="11" fill="rgba(255,255,255,0.3)" font-family="monospace" text-anchor="middle">Banyak garis = kurva kompleks</text>
+        <polyline points="320,90 335,78 350,65 365,55 380,50 395,52 410,58 425,68 440,75 455,72 470,62 485,50 500,42 515,40 530,45 545,55 560,65" fill="none" stroke="#3ecf8e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="110" y1="65" x2="125" y2="65" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="285" y1="65" x2="305" y2="65" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+      </svg>
+      <div style="margin-top:12px;background:var(--blue-dim);border:1px solid rgba(79,156,249,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--muted)">
+        <strong style="color:var(--blue)">Universal Approximation Theorem:</strong> Neural network dengan minimal 1 hidden layer + activation function non-linier bisa mengaproksimasi <strong style="color:var(--text)">fungsi apapun</strong>, sekompleks apapun.
+      </div>
+    </div>
+
+    <!-- RINGKASAN SEMUA ANALOGI -->
+    <div class="card">
+      <div class="card-title">Ringkasan semua analogi</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border2)">
+              <th style="text-align:left;padding:8px 10px;color:var(--muted);font-weight:500;font-family:var(--mono);font-size:11px">KONSEP AI</th>
+              <th style="text-align:left;padding:8px 10px;color:var(--muted);font-weight:500;font-family:var(--mono);font-size:11px">ANALOGI</th>
+              <th style="text-align:left;padding:8px 10px;color:var(--muted);font-weight:500;font-family:var(--mono);font-size:11px">INTINYA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 10px;color:var(--blue);font-weight:600">Gradient Descent</td>
+              <td style="padding:8px 10px;color:var(--muted)">⛰️ Turun gunung dalam gelap</td>
+              <td style="padding:8px 10px;color:var(--muted)">Meraba arah turun sedikit demi sedikit</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 10px;color:var(--purple);font-weight:600">Activation Function</td>
+              <td style="padding:8px 10px;color:var(--muted)">🔌 Saklar listrik</td>
+              <td style="padding:8px 10px;color:var(--muted)">Putuskan apakah sinyal diteruskan</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 10px;color:var(--green);font-weight:600">Neural Network Layer</td>
+              <td style="padding:8px 10px;color:var(--muted)">🧱 Tumpukan batu bata</td>
+              <td style="padding:8px 10px;color:var(--muted)">Linier + activation = non-linier</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 10px;color:var(--amber);font-weight:600">Weight (w)</td>
+              <td style="padding:8px 10px;color:var(--muted)">🚗 Gas mobil</td>
+              <td style="padding:8px 10px;color:var(--muted)">Seberapa besar pengaruh fitur x</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 10px;color:var(--red);font-weight:600">Bias (b)</td>
+              <td style="padding:8px 10px;color:var(--muted)">🚗 Posisi awal mobil</td>
+              <td style="padding:8px 10px;color:var(--muted)">Nilai dasar saat semua input = 0</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 10px;color:var(--teal);font-weight:600">Learning Rate (α)</td>
+              <td style="padding:8px 10px;color:var(--muted)">👣 Panjang langkah kaki</td>
+              <td style="padding:8px 10px;color:var(--muted)">Besar kecilnya update weight</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 10px;color:var(--muted);font-weight:600">Universal Approx.</td>
+              <td style="padding:8px 10px;color:var(--muted)">📐 Kurva dari garis kecil</td>
+              <td style="padding:8px 10px;color:var(--muted)">Banyak linier → aproksimasi apapun</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+  <div id="sec-kesimpulan" class="section">
+    <div class="card">
+      <div class="card-title">Poin-poin kunci</div>
+      <div class="check-list">
+        <div class="check-item"><span class="check-icon">✓</span><span>Turunan dilakukan terhadap <strong>W (weight)</strong>, bukan y_pred</span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span>Setelah dapat gradient, W diupdate: <code style="font-family:var(--mono);font-size:12px;color:var(--amber)">w_baru = w_lama − α · dL/dw</code></span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span>Gradient Descent = <strong>metode optimisasi</strong>, bukan persamaan linier</span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span><strong>Adam / AdamW / RMSprop</strong> semuanya adalah varian Gradient Descent</span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span>Di LSTM, prosesnya disebut <strong>BPTT (Backpropagation Through Time)</strong></span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span>Input banyak fitur → setiap fitur punya weight sendiri, semua diupdate sekaligus</span></div>
+        <div class="check-item"><span class="check-icon">✓</span><span>Gradient Clipping (<code style="font-family:var(--mono);font-size:12px;color:var(--amber)">max_norm=1.0</code>) untuk cegah Exploding Gradient</span></div>
+      </div>
+      <div class="tag-row">
+        <span class="tag">LSTM</span>
+        <span class="tag">BPTT</span>
+        <span class="tag">Time Series</span>
+        <span class="tag">PyTorch</span>
+        <span class="tag">AdamW</span>
+        <span class="tag">Huber Loss</span>
+        <span class="tag">Deep Learning</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Dibuat dengan ❤ — <span>Catatan Gradient Descent</span>
+  </footer>
+
+</div>
+
+<script>
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('sec-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  let currentStep = 0;
+  function goStep(n) {
+    document.getElementById('sp-' + currentStep).classList.remove('active');
+    document.querySelectorAll('.step-tab')[currentStep].classList.remove('active');
+    document.querySelectorAll('.step-tab')[currentStep].classList.add('done');
+    currentStep = n;
+    document.getElementById('sp-' + currentStep).classList.add('active');
+    document.querySelectorAll('.step-tab').forEach((d, i) => {
+      if (i === currentStep) { d.classList.add('active'); d.classList.remove('done'); }
+    });
+    const pct = ((currentStep + 1) / 6 * 100).toFixed(0);
+    document.getElementById('progressBar').style.width = pct + '%';
+  }
+
+  let currentBP = 0;
+  function goBP(n) {
+    document.getElementById('bp-' + currentBP).classList.remove('active');
+    document.querySelectorAll('#bpTabs .step-tab')[currentBP].classList.remove('active');
+    document.querySelectorAll('#bpTabs .step-tab')[currentBP].classList.add('done');
+    currentBP = n;
+    document.getElementById('bp-' + currentBP).classList.add('active');
+    document.querySelectorAll('#bpTabs .step-tab').forEach((d, i) => {
+      if (i === currentBP) { d.classList.add('active'); d.classList.remove('done'); }
+    });
+  }
+</script>
+</body>
+</html>
